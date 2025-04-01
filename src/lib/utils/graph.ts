@@ -8,6 +8,9 @@ import type {
 } from "@/lib/types/graph";
 
 export function toGraphNode(node: Node): GraphNode {
+  const primaryLabel =
+    node.labels?.find((label) => label != "Entity") || "Entity";
+
   return {
     id: node.uuid,
     value: node.name,
@@ -15,8 +18,10 @@ export function toGraphNode(node: Node): GraphNode {
     name: node.name,
     created_at: node.created_at,
     updated_at: node.updated_at,
+    attributes: node.attributes,
     summary: node.summary,
     labels: node.labels,
+    primaryLabel,
   };
 }
 

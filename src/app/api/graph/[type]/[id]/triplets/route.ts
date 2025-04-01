@@ -15,6 +15,7 @@ const transformSDKNode = (node: EntityNode): Node => {
     labels: node.labels,
     created_at: node.createdAt,
     updated_at: "",
+    attributes: node.attributes,
   };
 };
 

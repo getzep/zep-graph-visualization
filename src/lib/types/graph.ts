@@ -3,6 +3,7 @@ export interface Node {
   name: string;
   summary?: string;
   labels?: string[];
+  attributes?: Record<string, any>;
   created_at: string;
   updated_at: string;
 }
@@ -31,6 +32,7 @@ export interface RawTriplet {
 export interface GraphNode extends Node {
   id: string;
   value: string;
+  primaryLabel?: string;
 }
 
 export interface GraphEdge extends Edge {

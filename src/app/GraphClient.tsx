@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, ChangeEvent } from "react";
+import { useState, ChangeEvent, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Share2 } from "lucide-react";
 import { toast } from "sonner";
@@ -16,14 +16,9 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Graph } from "@/components/graph/Graph";
-import { GraphPopovers } from "@/components/graph/GraphPopovers";
-import { toGraphTriplets } from "@/lib/utils/graph";
-import {
-  RawTriplet,
-  NodePopupContent,
-  EdgePopupContent,
-} from "@/lib/types/graph";
+import { GraphVisualization } from "@/components/graph/GraphVisualization";
+import { GraphRef } from "@/components/graph/Graph";
+import { RawTriplet } from "@/lib/types/graph";
 
 interface UserDetailsProps {
   userID?: string;
@@ -32,13 +27,8 @@ interface UserDetailsProps {
 export function GraphClient({ userID: initialUserID }: UserDetailsProps) {
   const [isLoadingGraph, setIsLoadingGraph] = useState(false);
   const [triplets, setTriplets] = useState<RawTriplet[]>([]);
-  const [showNodePopup, setShowNodePopup] = useState(false);
-  const [showEdgePopup, setShowEdgePopup] = useState(false);
-  const [nodePopupContent, setNodePopupContent] =
-    useState<NodePopupContent | null>(null);
-  const [edgePopupContent, setEdgePopupContent] =
-    useState<EdgePopupContent | null>(null);
   const [graphDialogOpen, setGraphDialogOpen] = useState(false);
+  const graphRef = useRef<GraphRef>(null);
 
   // New state for user/group switch and ID input
   const [isGroupMode, setIsGroupMode] = useState(false);
@@ -76,41 +66,6 @@ export function GraphClient({ userID: initialUserID }: UserDetailsProps) {
     } finally {
       setIsLoadingGraph(false);
     }
-  };
-
-  const handleNodeClick = (nodeId: string) => {
-    const triplet = triplets.find(
-      (t) => t.sourceNode.uuid === nodeId || t.targetNode.uuid === nodeId
-    );
-    if (!triplet) return;
-
-    const node =
-      triplet.sourceNode.uuid === nodeId
-        ? triplet.sourceNode
-        : triplet.targetNode;
-
-    setNodePopupContent({ id: node.uuid, node });
-    setShowNodePopup(true);
-    setShowEdgePopup(false);
-  };
-
-  const handleEdgeClick = (edgeId: string) => {
-    const triplet = triplets.find((t) => t.edge.uuid === edgeId);
-    if (!triplet) return;
-
-    setEdgePopupContent({
-      id: triplet.edge.uuid,
-      source: triplet.sourceNode,
-      target: triplet.targetNode,
-      relation: triplet.edge,
-    });
-    setShowEdgePopup(true);
-    setShowNodePopup(false);
-  };
-
-  const handlePopoverClose = () => {
-    setShowNodePopup(false);
-    setShowEdgePopup(false);
   };
 
   return (
@@ -178,22 +133,14 @@ export function GraphClient({ userID: initialUserID }: UserDetailsProps) {
 
           <div className="relative flex-1 w-full h-[calc(80vh-8rem)]">
             {triplets.length > 0 && (
-              <Graph
-                triplets={toGraphTriplets(triplets)}
+              <GraphVisualization
+                ref={graphRef}
+                triplets={triplets}
                 width={window.innerWidth}
                 height={window.innerHeight * 0.75}
-                onNodeClick={handleNodeClick}
-                onEdgeClick={handleEdgeClick}
-                onBlur={handlePopoverClose}
+                zoomOnMount={true}
               />
             )}
-            <GraphPopovers
-              showNodePopup={showNodePopup}
-              showEdgePopup={showEdgePopup}
-              nodePopupContent={nodePopupContent}
-              edgePopupContent={edgePopupContent}
-              onOpenChange={handlePopoverClose}
-            />
           </div>
 
           <DialogFooter>
