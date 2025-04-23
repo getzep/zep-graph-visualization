@@ -107,10 +107,10 @@
   resolved "https://registry.yarnpkg.com/@floating-ui/utils/-/utils-0.2.9.tgz#50dea3616bc8191fb8e112283b49eaff03e78429"
   integrity sha512-MDWhGtE+eHw5JW7lq4qhc5yRLS11ERl1c7Z6Xd0a58DozHES6EnNNwUWbMiG4J9Cgj053Bhk8zvlhFYKVhULwg==
 
-"@getzep/zep-cloud@^2.8.0":
-  version "2.8.0"
-  resolved "https://registry.yarnpkg.com/@getzep/zep-cloud/-/zep-cloud-2.8.0.tgz#6b04506a9a7c5429a69c52bbec84b7f9d606c3a0"
-  integrity sha512-ALc5o0tFHhpp2hwGZzE/K402XUY+9/2orTlwtnty5AAAFdi50gEaBpp2Ue5FcuEQqHQOHLMmthlUfy50BaUM/Q==
+"@getzep/zep-cloud@^2.11.0":
+  version "2.11.0"
+  resolved "https://registry.yarnpkg.com/@getzep/zep-cloud/-/zep-cloud-2.11.0.tgz#9cd27f5cfc151c448527b236cb44f2496a96a200"
+  integrity sha512-9totmYK6NxGytY1jIhfTX2sPay2Rtsy0pXq9U3Vn7Nj6A2GDTescXByQyq8ued9nmjunTBWeG4rzNPpyEo7QqA==
   dependencies:
     form-data "^4.0.0"
     formdata-node "^6.0.3"

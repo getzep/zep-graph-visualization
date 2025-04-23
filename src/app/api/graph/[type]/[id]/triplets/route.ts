@@ -4,8 +4,15 @@ import { createTriplets } from "@/lib/utils/graph";
 import { ZepClient } from "@getzep/zep-cloud";
 import { EntityNode, EntityEdge } from "@getzep/zep-cloud/api";
 
+interface PaginatedResponse<T> {
+  data: T[];
+  nextCursor: string | null;
+}
+
 const supportedResourceTypes = ["user", "group"] as const;
 type ResourceType = (typeof supportedResourceTypes)[number];
+const NODE_BATCH_SIZE = 100;
+const EDGE_BATCH_SIZE = 100;
 
 const transformSDKNode = (node: EntityNode): Node => {
   return {
@@ -39,23 +46,109 @@ const transformSDKEdge = (edge: EntityEdge): Edge => {
 async function getNodes(
   type: ResourceType,
   id: string,
-  zep: ZepClient
-): Promise<Node[]> {
-  if (type === "user") {
-    const nodes = await zep.graph.node.getByUserId(id);
-    return nodes.map(transformSDKNode);
+  zep: ZepClient,
+  cursor?: string
+): Promise<PaginatedResponse<Node>> {
+  try {
+    let nodes;
+    if (type === "user") {
+      nodes = await zep.graph.node.getByUserId(id, {
+        uuidCursor: cursor || "",
+        limit: NODE_BATCH_SIZE,
+      });
+    } else {
+      nodes = await zep.graph.node.getByGroupId(id, {
+        uuidCursor: cursor || "",
+        limit: NODE_BATCH_SIZE,
+      });
+    }
+    
+    const transformedNodes = nodes.map(transformSDKNode);
+    return {
+      data: transformedNodes,
+      nextCursor: transformedNodes.length > 0 ? transformedNodes[transformedNodes.length - 1].uuid : null,
+    };
+  } catch (error) {
+    console.error("Error fetching nodes:", error);
+    return { data: [], nextCursor: null };
   }
-  const nodes = await zep.graph.node.getByGroupId(id);
-  return nodes.map(transformSDKNode);
 }
 
-async function getEdges(type: ResourceType, id: string, zep: ZepClient) {
-  if (type === "user") {
-    const edges = await zep.graph.edge.getByUserId(id);
-    return edges.map(transformSDKEdge);
+async function getEdges(
+  type: ResourceType, 
+  id: string, 
+  zep: ZepClient,
+  cursor?: string
+): Promise<PaginatedResponse<Edge>> {
+  try {
+    let edges;
+    if (type === "user") {
+      edges = await zep.graph.edge.getByUserId(id, {
+        uuidCursor: cursor || "",
+        limit: EDGE_BATCH_SIZE,
+      });
+    } else {
+      edges = await zep.graph.edge.getByGroupId(id, {
+        uuidCursor: cursor || "",
+        limit: EDGE_BATCH_SIZE,
+      });
+    }
+    
+    const transformedEdges = edges.map(transformSDKEdge);
+    return {
+      data: transformedEdges,
+      nextCursor: transformedEdges.length > 0 ? transformedEdges[transformedEdges.length - 1].uuid : null,
+    };
+  } catch (error) {
+    console.error("Error fetching edges:", error);
+    return { data: [], nextCursor: null };
   }
-  const edges = await zep.graph.edge.getByGroupId(id);
-  return edges.map(transformSDKEdge);
+}
+
+async function getAllNodes(
+  type: ResourceType,
+  id: string,
+  zep: ZepClient
+): Promise<Node[]> {
+  let allNodes: Node[] = [];
+  let cursor = undefined;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data: nodes, nextCursor } = await getNodes(type, id, zep, cursor);
+    allNodes = [...allNodes, ...nodes];
+
+    if (nextCursor === null || nodes.length === 0) {
+      hasMore = false;
+    } else {
+      cursor = nextCursor;
+    }
+  }
+
+  return allNodes;
+}
+
+async function getAllEdges(
+  type: ResourceType,
+  id: string,
+  zep: ZepClient
+): Promise<Edge[]> {
+  let allEdges: Edge[] = [];
+  let cursor = undefined;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data: edges, nextCursor } = await getEdges(type, id, zep, cursor);
+    allEdges = [...allEdges, ...edges];
+
+    if (nextCursor === null || edges.length === 0) {
+      hasMore = false;
+    } else {
+      cursor = nextCursor;
+    }
+  }
+
+  return allEdges;
 }
 
 export async function GET(
@@ -83,13 +176,13 @@ export async function GET(
       );
     }
 
-    // Fetch both nodes and edges
+    // Fetch all nodes and edges using the batch completion wrappers
     const [nodes, edges] = await Promise.all([
-      getNodes(type, id, zep),
-      getEdges(type, id, zep),
+      getAllNodes(type, id, zep),
+      getAllEdges(type, id, zep),
     ]);
 
-    if (!nodes || !edges) {
+    if (!nodes.length && !edges.length) {
       return NextResponse.json({ triplets: [] });
     }
 

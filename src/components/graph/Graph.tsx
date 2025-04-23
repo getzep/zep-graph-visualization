@@ -221,6 +221,11 @@ export const Graph = forwardRef<GraphRef, GraphProps>(
 
       const linkGroups = triplets.reduce(
         (groups, triplet) => {
+          // Skip isolated node edges (they are just placeholders for showing isolated nodes)
+          if (triplet.relation.type === "_isolated_node_") {
+            return groups;
+          }
+
           let key = `${triplet.source.id}-${triplet.target.id}`;
           const reverseKey = `${triplet.target.id}-${triplet.source.id}`;
 
@@ -342,7 +347,28 @@ export const Graph = forwardRef<GraphRef, GraphProps>(
       // @ts-ignore
       svgElement.call(zoom).call(zoom.transform, d3.zoomIdentity.scale(0.8));
 
-      // Create simulation
+      // Identify which nodes are isolated (not in any links)
+      const nodeIdSet = new Set(nodes.map((n: any) => n.id));
+      const linkedNodeIds = new Set<string>();
+
+      links.forEach((link: any) => {
+        const sourceId =
+          typeof link.source === "string" ? link.source : link.source.id;
+        const targetId =
+          typeof link.target === "string" ? link.target : link.target.id;
+        linkedNodeIds.add(sourceId);
+        linkedNodeIds.add(targetId);
+      });
+
+      // Nodes that don't appear in any link are isolated
+      const isolatedNodeIds = new Set<string>();
+      nodeIdSet.forEach((nodeId: string) => {
+        if (!linkedNodeIds.has(nodeId)) {
+          isolatedNodeIds.add(nodeId);
+        }
+      });
+
+      // Create simulation with custom forces
       const simulation = d3
         .forceSimulation(nodes as d3.SimulationNodeDatum[])
         .force(
@@ -357,7 +383,11 @@ export const Graph = forwardRef<GraphRef, GraphProps>(
           "charge",
           d3
             .forceManyBody()
-            .strength(-3000)
+            .strength((d: any) => {
+              // Use a less negative strength for isolated nodes
+              // to pull them closer to the center
+              return isolatedNodeIds.has(d.id) ? -500 : -3000;
+            })
             .distanceMin(20)
             .distanceMax(500)
             .theta(0.8)
@@ -366,6 +396,17 @@ export const Graph = forwardRef<GraphRef, GraphProps>(
         .force(
           "collide",
           d3.forceCollide().radius(50).strength(0.3).iterations(5)
+        )
+        // Add a special gravity force for isolated nodes to pull them toward the center
+        .force(
+          "isolatedGravity",
+          d3
+            .forceRadial(
+              100, // distance from center
+              width / 2, // center x
+              height / 2 // center y
+            )
+            .strength((d: any) => (isolatedNodeIds.has(d.id) ? 0.15 : 0.01))
         )
         .velocityDecay(0.4)
         .alphaDecay(0.05)
